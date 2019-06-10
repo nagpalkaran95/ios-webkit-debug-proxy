@@ -65,6 +65,7 @@ struct idevice_connection_private {
 
 wi_status idevice_connection_get_fd(idevice_connection_t connection,
     int *to_fd) {
+  printf("In idevice_connection_get_fd\n");
   if (!connection || !to_fd) {
     return WI_ERROR;
   }
@@ -90,6 +91,7 @@ wi_status idevice_connection_get_fd(idevice_connection_t connection,
 
 int wi_connect(const char *device_id, char **to_device_id,
     char **to_device_name, int *to_device_os_version, int recv_timeout) {
+  printf("In wi_connect\n");
   int ret = -1;
 
   idevice_t phone = NULL;
@@ -100,12 +102,14 @@ int wi_connect(const char *device_id, char **to_device_id,
   int fd = -1;
 
   // get phone
+  printf("Getting phone\n");
   if (idevice_new(&phone, device_id)) {
     fprintf(stderr, "No device found, is it plugged in?\n");
     goto leave_cleanup;
   }
 
   // connect to lockdownd
+  printf("Connecting to lockdownd\n");
   lockdownd_error_t ldret;
   if (LOCKDOWN_E_SUCCESS != (ldret = lockdownd_client_new_with_handshake(
         phone, &client, "ios_webkit_debug_proxy"))) {
@@ -114,6 +118,7 @@ int wi_connect(const char *device_id, char **to_device_id,
   }
 
   // get device info
+  printf("Getting device info\n");
   if (to_device_id &&
       !lockdownd_get_value(client, NULL, "UniqueDeviceID", &node)) {
     plist_get_string_val(node, to_device_id);
@@ -144,6 +149,7 @@ int wi_connect(const char *device_id, char **to_device_id,
   }
 
   // start webinspector, get port
+  printf("Starting webinspector, getting port\n");
   if (lockdownd_start_service(client, "com.apple.webinspector", &service) ||
       !service->port) {
     perror("Could not start com.apple.webinspector!");
@@ -151,6 +157,7 @@ int wi_connect(const char *device_id, char **to_device_id,
   }
 
   // connect to webinspector
+  printf("Connecting to webinspector\n");
   if (idevice_connect(phone, service->port, &connection)) {
     perror("idevice_connect failed!");
     goto leave_cleanup;
@@ -219,6 +226,7 @@ leave_cleanup:
 //
 
 wi_status wi_on_error(wi_t self, const char *format, ...) {
+  printf("In wi_on_error\n");
   va_list args;
   va_start(args, format);
   vfprintf(stderr, format, args);
@@ -229,6 +237,7 @@ wi_status wi_on_error(wi_t self, const char *format, ...) {
 
 wi_status wi_on_debug(wi_t self, const char *message,
     const char *buf, size_t length) {
+  printf("In wi_on_debug\n");
   if (self->is_debug && *self->is_debug) {
     char *text;
     cb_asprint(&text, buf, length, 80, 30);
@@ -244,6 +253,7 @@ wi_status wi_on_debug(wi_t self, const char *message,
    __argument
  */
 wi_status wi_send_plist(wi_t self, plist_t rpc_dict) {
+  printf("In wi_send_plist\n");
   wi_private_t my = self->private_state;
   char *rpc_bin = NULL;
   uint32_t rpc_len = 0;
@@ -317,6 +327,7 @@ wi_status wi_send_plist(wi_t self, plist_t rpc_dict) {
 //
 
 wi_status wi_parse_length(wi_t self, const char *buf, size_t *to_length) {
+  printf("In wi_parse_length\n");
   if (!buf || !to_length) {
     return WI_ERROR;
   }
@@ -339,6 +350,7 @@ wi_status wi_parse_length(wi_t self, const char *buf, size_t *to_length) {
 
 wi_status wi_parse_plist(wi_t self, const char *from_buf, size_t length,
     plist_t *to_rpc_dict, bool *to_is_partial) {
+  printf("In wi_parse_plist\n");
   wi_private_t my = self->private_state;
   *to_is_partial = false;
   *to_rpc_dict = NULL;
@@ -396,6 +408,7 @@ wi_status wi_parse_plist(wi_t self, const char *from_buf, size_t length,
 }
 
 wi_status wi_recv_packet(wi_t self, const char *packet, ssize_t length) {
+  printf("In wi_recv_packet\n");
   wi_on_debug(self, "wi.recv_packet", packet, length);
 
   size_t body_length = 0;
@@ -427,6 +440,7 @@ wi_status wi_recv_packet(wi_t self, const char *packet, ssize_t length) {
 }
 
 wi_status wi_recv_loop(wi_t self) {
+  printf("In wi_recv_loop\n");
   wi_private_t my = self->private_state;
   wi_status ret;
   const char *in_head = my->in->in_head;
@@ -464,6 +478,7 @@ wi_status wi_recv_loop(wi_t self) {
 }
 
 wi_status wi_on_recv(wi_t self, const char *buf, ssize_t length) {
+  printf("In wi_on_recv\n");
   wi_private_t my = self->private_state;
   if (length < 0) {
     return WI_ERROR;
@@ -486,6 +501,7 @@ wi_status wi_on_recv(wi_t self, const char *buf, ssize_t length) {
 //
 
 void wi_private_free(wi_private_t my) {
+  printf("In wi_private_free\n");
   if (my) {
     cb_free(my->in);
     cb_free(my->partial);
@@ -494,6 +510,7 @@ void wi_private_free(wi_private_t my) {
   }
 }
 wi_private_t wi_private_new() {
+  printf("In wi_private_new\n");
   wi_private_t my = (wi_private_t)malloc(sizeof(
         struct wi_private));
   if (my) {
@@ -510,6 +527,7 @@ wi_private_t wi_private_new() {
 
 
 void wi_free(wi_t self) {
+  printf("In wi_free\n");
   if (self) {
     wi_private_free(self->private_state);
     memset(self, 0, sizeof(struct wi_struct));
@@ -517,6 +535,7 @@ void wi_free(wi_t self) {
   }
 }
 wi_t wi_new(bool partials_supported) {
+  printf("In wi_new\n");
   wi_t self = (wi_t)malloc(sizeof(struct wi_struct));
   if (!self) {
     return NULL;

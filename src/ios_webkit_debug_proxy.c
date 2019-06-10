@@ -243,6 +243,7 @@ iwdp_status iwdp_on_error(iwdp_t self, const char *format, ...) {
 }
 
 void iwdp_log_connect(iwdp_iport_t iport) {
+  printf("iport->device_id = %s, iport->port = %d\n", iport->device_id,iport->port);
   if (iport->device_id) {
     printf("Connected :%d to %s (%s)\n", iport->port, iport->device_name,
         iport->device_id);
@@ -252,6 +253,8 @@ void iwdp_log_connect(iwdp_iport_t iport) {
 }
 
 void iwdp_log_disconnect(iwdp_iport_t iport) {
+  printf("In iwdp_log_disconnect\n");
+  // printf("iport->iwi->connected = %d\n", iport->iwi->connected);
   if (iport->iwi && iport->iwi->connected) {
     printf("Disconnected :%d from %s (%s)\n", iport->port,
         iport->device_name, iport->device_id);
@@ -268,6 +271,7 @@ void iwdp_log_disconnect(iwdp_iport_t iport) {
 //
 
 dl_status iwdp_listen(iwdp_t self, const char *device_id) {
+  printf("listening on device %s\n", device_id);
   iwdp_private_t my = self->private_state;
 
   // see if this device was previously attached
@@ -279,6 +283,8 @@ dl_status iwdp_listen(iwdp_t self, const char *device_id) {
   }
   int port = (iport ? iport->port : -1);
 
+
+  printf("selecting new port\n");
   // select new port
   int min_port = -1;
   int max_port = -1;
@@ -296,6 +302,7 @@ dl_status iwdp_listen(iwdp_t self, const char *device_id) {
   }
   iport->self = self;
 
+  printf("listening  for browser clients\n");
   // listen for browser clients
   int s_fd = -1;
   if (port > 0) {
@@ -334,6 +341,7 @@ dl_status iwdp_listen(iwdp_t self, const char *device_id) {
   iport->s_fd = s_fd;
   iport->port = port;
   if (!device_id) {
+    printf("Connecting via method 1\n");
     iwdp_log_connect(iport);
   }
   return DL_SUCCESS;
@@ -342,10 +350,12 @@ dl_status iwdp_listen(iwdp_t self, const char *device_id) {
 iwdp_status iwdp_start(iwdp_t self) {
   iwdp_private_t my = self->private_state;
   if (my->idl) {
+    printf("Device already started ");
     return self->on_error(self, "Already started?");
   }
 
   if (iwdp_listen(self, NULL)) {
+    printf("Listening for incoming connections");
     // Okay, keep going
   }
 
@@ -475,6 +485,7 @@ dl_status iwdp_on_detach(dl_t dl, const char *device_id, int device_num) {
 
 iwdp_status iwdp_iport_accept(iwdp_t self, iwdp_iport_t iport, int ws_fd,
     iwdp_iws_t *to_iws) {
+  printf("Accepting\n");
   iwdp_iws_t iws = iwdp_iws_new(self->is_debug);
   iws->iport = iport;
   iws->ws_fd = ws_fd;
@@ -1170,6 +1181,7 @@ rpc_status iwdp_send_plist(rpc_t rpc, const plist_t rpc_dict) {
 rpc_status iwdp_on_reportSetup(rpc_t rpc) {
   iwdp_iwi_t iwi = (iwdp_iwi_t)rpc->state;
   iwi->connected = true;
+  printf("Connecting via method 2\n");
   iwdp_log_connect(iwi->iport);
   return RPC_SUCCESS;
 }
@@ -1298,12 +1310,14 @@ rpc_status iwdp_on_applicationDisconnected(rpc_t rpc, const rpc_app_t app) {
 }
 
 rpc_status iwdp_on_reportConnectedApplicationList(rpc_t rpc, const rpc_app_t *apps) {
+  printf("In reportConnectedApplicationList\n");
   iwdp_iwi_t iwi = (iwdp_iwi_t)rpc->state;
   ht_t app_id_ht = iwi->app_id_to_true;
 
   // rpc_reportSetup never comes from iOS >= 11.3
   if (!iwi->connected) {
     iwi->connected = true;
+    printf("Connecting via method 3\n");
     iwdp_log_connect(iwi->iport);
   }
 
@@ -1451,6 +1465,7 @@ void iwdp_free(iwdp_t self) {
 }
 
 iwdp_t iwdp_new(const char *frontend, const char *sim_wi_socket_addr) {
+  printf("setting new connection\n");
   iwdp_t self = (iwdp_t)malloc(sizeof(struct iwdp_struct));
   iwdp_private_t my = (iwdp_private_t)malloc(sizeof(struct iwdp_private));
   if (!self || !my) {
@@ -1522,6 +1537,7 @@ iwdp_iport_t iwdp_iport_new() {
     iwdp_iport_free(iport);
     return NULL;
   }
+  // printf("iport->device_id = %s\n", iport->device_id);
   return iport;
 }
 
@@ -1689,15 +1705,21 @@ iwdp_iwi_t iwdp_iwi_new(bool partials_supported, bool *is_debug) {
   iwi->type.type = TYPE_IWI;
   iwi->app_id_to_true = ht_new(HT_STRING_KEYS);
   iwi->page_num_to_ipage = ht_new(HT_INT_KEYS);
+  // iwi->connected = true;
+  // // iwdp_log_connect(iwi->iport);
   rpc_t rpc = rpc_new();
+
   wi_t wi = wi_new(partials_supported);
   if (!rpc || !wi || !iwi->page_num_to_ipage || !iwi->app_id_to_true) {
     iwdp_iwi_free(iwi);
     return NULL;
   }
+
+
   rpc->on_reportSetup = iwdp_on_reportSetup;
   rpc->on_reportConnectedApplicationList =
     iwdp_on_reportConnectedApplicationList;
+  printf("rpc state%s\n", rpc->state);
   rpc->on_applicationConnected = iwdp_on_applicationConnected;
   rpc->on_applicationDisconnected = iwdp_on_applicationDisconnected;
   rpc->on_applicationSentListing = iwdp_on_applicationSentListing;

@@ -315,6 +315,7 @@ rpc_status rpc_recv_reportSetup(rpc_t self, const plist_t args) {
  */
 rpc_status rpc_recv_reportConnectedApplicationList(rpc_t self,
     const plist_t args) {
+  printf("In rpc_recv_reportConnectedApplicationList\n");
   plist_t item = plist_dict_get_item(args, "WIRApplicationDictionaryKey");
   rpc_app_t *apps = NULL;
   rpc_status ret = rpc_parse_apps(item, &apps);
@@ -328,6 +329,7 @@ rpc_status rpc_recv_reportConnectedApplicationList(rpc_t self,
 /*
  */
 rpc_status rpc_recv_applicationConnected(rpc_t self, const plist_t args) {
+  printf("In rpc_recv_applicationConnected\n");
   rpc_app_t app = NULL;
   rpc_status ret = rpc_parse_app(args, &app);
   if (!ret) {
@@ -340,6 +342,7 @@ rpc_status rpc_recv_applicationConnected(rpc_t self, const plist_t args) {
 /*
  */
 rpc_status rpc_recv_applicationDisconnected(rpc_t self, const plist_t args) {
+  printf("In rpc_recv_applicationDisconnected\n");
   rpc_app_t app = NULL;
   rpc_status ret = rpc_parse_app(args, &app);
   if (!ret) {
@@ -544,6 +547,7 @@ void rpc_free(rpc_t self) {
 }
 
 rpc_t rpc_new() {
+  printf("In rpc_new\n");
   rpc_t self = (rpc_t)malloc(sizeof(struct rpc_struct));
   if (!self) {
     return NULL;
